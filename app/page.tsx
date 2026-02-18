@@ -130,13 +130,14 @@ const Navbar = () => {
 // --- INSTAGRAM EMBED ---
 const InstagramEmbed = ({ url }: { url: string }) => {
     const containerRef = useRef<HTMLDivElement>(null)
+    const [loaded, setLoaded] = useState(false)
 
     useEffect(() => {
         // Load Instagram embed script
         const existing = document.querySelector('script[src*="instagram.com/embed.js"]')
         if (existing) {
-            // Re-process embeds if script already loaded
             (window as any).instgrm?.Embeds?.process()
+            setLoaded(true)
             return
         }
         const script = document.createElement('script')
@@ -144,18 +145,27 @@ const InstagramEmbed = ({ url }: { url: string }) => {
         script.async = true
         script.onload = () => {
             (window as any).instgrm?.Embeds?.process()
+            setLoaded(true)
         }
         document.body.appendChild(script)
     }, [url])
 
-    const embedHtml = `<blockquote class="instagram-media" data-instgrm-captioned data-instgrm-permalink="${url}?utm_source=ig_embed" data-instgrm-version="14" style="background:#000; border:0; border-radius:12px; margin:0; padding:0; width:100%; max-width:440px;"><div style="padding:16px;"><a href="${url}" target="_blank" style="color:#fff; text-decoration:none;">View this post on Instagram</a></div></blockquote>`
+    const embedHtml = `<blockquote class="instagram-media" data-instgrm-captioned data-instgrm-permalink="${url}?utm_source=ig_embed" data-instgrm-version="14" style="background:#000; border:0; border-radius:12px; margin:0; padding:0; width:100%; max-width:440px; min-width:326px;"><div style="padding:16px;"><a href="${url}" target="_blank" style="color:#fff; text-decoration:none;">View this post on Instagram</a></div></blockquote>`
 
     return (
-        <div
-            ref={containerRef}
-            className="w-full max-w-[440px] overflow-hidden rounded-2xl [&_iframe]:!rounded-2xl"
-            dangerouslySetInnerHTML={{ __html: embedHtml }}
-        />
+        <div className="relative w-full max-w-[440px] mx-auto min-h-[600px] flex items-center justify-center bg-zinc-900 rounded-2xl overflow-hidden">
+            {!loaded && (
+                <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 z-10">
+                    <Loader2 className="h-8 w-8 text-karnataka-yellow animate-spin" />
+                </div>
+            )}
+            <div
+                ref={containerRef}
+                className="w-full h-full [&_iframe]:!rounded-2xl [&_iframe]:!max-w-full [&_iframe]:!min-w-full"
+                dangerouslySetInnerHTML={{ __html: embedHtml }}
+                suppressHydrationWarning
+            />
+        </div>
     )
 }
 
