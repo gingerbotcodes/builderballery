@@ -127,6 +127,38 @@ const Navbar = () => {
     )
 }
 
+// --- INSTAGRAM EMBED ---
+const InstagramEmbed = ({ url }: { url: string }) => {
+    const containerRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        // Load Instagram embed script
+        const existing = document.querySelector('script[src*="instagram.com/embed.js"]')
+        if (existing) {
+            // Re-process embeds if script already loaded
+            (window as any).instgrm?.Embeds?.process()
+            return
+        }
+        const script = document.createElement('script')
+        script.src = '//www.instagram.com/embed.js'
+        script.async = true
+        script.onload = () => {
+            (window as any).instgrm?.Embeds?.process()
+        }
+        document.body.appendChild(script)
+    }, [url])
+
+    const embedHtml = `<blockquote class="instagram-media" data-instgrm-captioned data-instgrm-permalink="${url}?utm_source=ig_embed" data-instgrm-version="14" style="background:#000; border:0; border-radius:12px; margin:0; padding:0; width:100%; max-width:440px;"><div style="padding:16px;"><a href="${url}" target="_blank" style="color:#fff; text-decoration:none;">View this post on Instagram</a></div></blockquote>`
+
+    return (
+        <div
+            ref={containerRef}
+            className="w-full max-w-[440px] overflow-hidden rounded-2xl [&_iframe]:!rounded-2xl"
+            dangerouslySetInnerHTML={{ __html: embedHtml }}
+        />
+    )
+}
+
 // --- HERO ---
 const Hero = () => {
     return (
@@ -193,48 +225,13 @@ const Hero = () => {
                         </motion.div>
                     </motion.div>
 
-                    {/* Hero Visual */}
+                    {/* Hero Visual — Instagram Reel Embed */}
                     <motion.div initial={{ opacity: 0, scale: 0.9, x: 50 }} animate={{ opacity: 1, scale: 1, x: 0 }}
                         transition={{ delay: 0.3, duration: 0.6 }} className="relative hidden lg:block">
                         <div className="absolute -inset-4 bg-gradient-to-r from-karnataka-red/20 via-karnataka-yellow/10 to-karnataka-red/20 rounded-[3rem] blur-2xl animate-pulse-glow" />
                         <div className="relative border-gradient rounded-[2rem] p-1">
-                            <div className="bg-zinc-900 rounded-[1.85rem] p-4">
-                                <div className="relative aspect-[4/5] rounded-2xl overflow-hidden">
-                                    <Image src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=2070&auto=format&fit=crop"
-                                        alt="Builder Ballery" fill className="object-cover" priority />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/30 to-transparent" />
-
-                                    {/* Reel badge */}
-                                    <div className="absolute top-4 left-4 flex items-center gap-2 glass-dark px-3 py-1.5 rounded-full">
-                                        <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                                        <span className="text-white text-xs font-semibold">LIVE</span>
-                                    </div>
-
-                                    {/* Content overlay */}
-                                    <div className="absolute bottom-0 left-0 right-0 p-6">
-                                        <p className="text-white/60 text-xs mb-1 flex items-center gap-1"><Clock className="h-3 w-3" /> Latest Reel</p>
-                                        <h3 className="text-white font-bold leading-tight mb-3">ನಿರ್ಮಾಣ ಸ್ಥಳದಲ್ಲಿ ಕಾಂಕ್ರೀಟ್ ಹಾಕುವ ಪ್ರಕ್ರಿಯೆ</h3>
-                                        <div className="flex items-center gap-4 text-white/80">
-                                            <span className="flex items-center gap-1 text-xs"><Heart className="h-3 w-3" /> 12.4K</span>
-                                            <span className="flex items-center gap-1 text-xs"><Eye className="h-3 w-3" /> 150K</span>
-                                            <span className="flex items-center gap-1 text-xs"><MessageCircle className="h-3 w-3" /> 892</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* Engagement Bar */}
-                                <div className="flex items-center justify-between px-2 pt-4">
-                                    <div className="flex items-center gap-4">
-                                        {[Heart, MessageCircle, Share2].map((Icon, i) => (
-                                            <motion.button key={i} whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.9 }}
-                                                className="text-zinc-400 hover:text-white transition-colors">
-                                                <Icon className="h-5 w-5" />
-                                            </motion.button>
-                                        ))}
-                                    </div>
-                                    <motion.button whileHover={{ scale: 1.2 }} className="text-zinc-400 hover:text-karnataka-yellow transition-colors">
-                                        <Bookmark className="h-5 w-5" />
-                                    </motion.button>
-                                </div>
+                            <div className="bg-zinc-900 rounded-[1.85rem] p-4 flex items-center justify-center">
+                                <InstagramEmbed url="https://www.instagram.com/reel/DUVY5PigfqF/" />
                             </div>
                         </div>
                     </motion.div>
