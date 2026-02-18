@@ -7,7 +7,7 @@ import {
     ChevronRight, PlayCircle, Layers, Users, Clock, Heart, MessageCircle,
     Eye, Share2, Bookmark, Sparkles, Building2, HardHat, ArrowRight,
     ExternalLink, MapPin, Calendar, TrendingUp, Home, Compass, Package,
-    Landmark, FileText, Download, Phone, Mail, Zap
+    Landmark, FileText, Download, Phone, Mail, Zap, Check, Loader2
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -484,48 +484,117 @@ const AboutSection = () => (
     </section>
 )
 
-// --- CTA ---
-const CTA = () => (
-    <section id="contact" className="relative py-24 lg:py-32 overflow-hidden bg-zinc-950">
-        <div className="absolute inset-0 bg-grid-dark" />
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-karnataka-red/8 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-karnataka-yellow/6 rounded-full blur-[120px]" />
+// --- CONTACT FORM ---
+const ContactForm = () => {
+    const [name, setName] = useState('')
+    const [phone, setPhone] = useState('')
+    const [msg, setMsg] = useState('')
+    const [sending, setSending] = useState(false)
+    const [sent, setSent] = useState(false)
+    const [error, setError] = useState('')
 
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative text-center">
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border border-karnataka-yellow/20 mb-8">
-                <Zap className="h-4 w-4 text-karnataka-yellow" />
-                <span className="text-sm font-semibold text-zinc-300">Let&apos;s Connect • ಸಂಪರ್ಕದಲ್ಲಿರಿ</span>
-            </motion.div>
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setSending(true)
+        setError('')
+        try {
+            const res = await fetch('/api/contacts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, phone, message: msg }),
+            })
+            if (res.ok) {
+                setSent(true)
+                setName(''); setPhone(''); setMsg('')
+            } else {
+                const data = await res.json()
+                setError(data.error || 'Something went wrong')
+            }
+        } catch {
+            setError('Failed to send. Please try again.')
+        } finally {
+            setSending(false)
+        }
+    }
 
-            <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-                transition={{ delay: 0.1 }} className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold text-white mb-6 leading-tight">
-                ಒಟ್ಟಿಗೆ ಏನನ್ನಾದರೂ
-                <br /><span className="gradient-text-karnataka">ಶ್ರೇಷ್ಠವಾಗಿ ನಿರ್ಮಿಸೋಣ</span>
-                <br /><span className="text-xl text-zinc-500 font-normal">Let&apos;s Build Something Great Together</span>
-            </motion.h2>
+    return (
+        <section id="contact" className="relative py-24 lg:py-32 overflow-hidden bg-zinc-950">
+            <div className="absolute inset-0 bg-grid-dark" />
+            <div className="absolute top-0 left-1/4 w-96 h-96 bg-karnataka-red/8 rounded-full blur-[120px]" />
+            <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-karnataka-yellow/6 rounded-full blur-[120px]" />
 
-            <motion.p initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-                transition={{ delay: 0.2 }} className="text-lg text-zinc-500 mb-12 max-w-2xl mx-auto">
-                Whether you have a project in mind or just want to say hello, I&apos;m always ready.
-            </motion.p>
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+                <div className="text-center mb-12">
+                    <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border border-karnataka-yellow/20 mb-8">
+                        <Zap className="h-4 w-4 text-karnataka-yellow" />
+                        <span className="text-sm font-semibold text-zinc-300">Get in Touch • ಸಂಪರ್ಕಿಸಿ</span>
+                    </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-                transition={{ delay: 0.3 }} className="flex flex-col sm:flex-row gap-4 justify-center">
-                <motion.a href="mailto:contact@builderballery.com"
-                    className="btn-karnataka px-8 py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2"
-                    whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}>
-                    <Mail className="h-5 w-5" /> Get in Touch
-                </motion.a>
-                <motion.a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer"
-                    className="btn-glass px-8 py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2"
-                    whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}>
-                    <Instagram className="h-5 w-5" /> Follow on Instagram
-                </motion.a>
-            </motion.div>
-        </div>
-    </section>
-)
+                    <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+                        transition={{ delay: 0.1 }} className="text-4xl sm:text-5xl font-display font-bold text-white mb-4 leading-tight">
+                        ಒಟ್ಟಿಗೆ ಏನನ್ನಾದರೂ <span className="gradient-text-karnataka">ಶ್ರೇಷ್ಠವಾಗಿ ನಿರ್ಮಿಸೋಣ</span>
+                    </motion.h2>
+                    <motion.p initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+                        transition={{ delay: 0.2 }} className="text-zinc-500 text-lg">
+                        Have a question or a project? Drop your details and I&apos;ll reach out.
+                    </motion.p>
+                </div>
+
+                <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+                    transition={{ delay: 0.3 }} className="max-w-lg mx-auto">
+
+                    {sent ? (
+                        <div className="glass rounded-3xl p-10 text-center border border-karnataka-yellow/20">
+                            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-karnataka-red to-karnataka-yellow flex items-center justify-center mx-auto mb-5">
+                                <Check className="h-8 w-8 text-white" />
+                            </div>
+                            <h3 className="text-2xl font-display font-bold text-white mb-2">Thank You! 🙏</h3>
+                            <p className="text-zinc-400 mb-6">I&apos;ll get back to you soon.</p>
+                            <button onClick={() => setSent(false)}
+                                className="text-sm text-karnataka-yellow hover:underline">Send another message</button>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleSubmit} className="glass rounded-3xl p-8 border border-white/10 space-y-5">
+                            <div>
+                                <label className="block text-sm font-medium text-zinc-400 mb-2">Name *</label>
+                                <input type="text" required value={name} onChange={e => setName(e.target.value)}
+                                    placeholder="Your name"
+                                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-zinc-600 focus:outline-none focus:border-karnataka-yellow/50 focus:ring-1 focus:ring-karnataka-yellow/30 transition-all" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-zinc-400 mb-2">Phone *</label>
+                                <input type="tel" required value={phone} onChange={e => setPhone(e.target.value)}
+                                    placeholder="+91 98765 43210"
+                                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-zinc-600 focus:outline-none focus:border-karnataka-yellow/50 focus:ring-1 focus:ring-karnataka-yellow/30 transition-all" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-zinc-400 mb-2">Message</label>
+                                <textarea rows={3} value={msg} onChange={e => setMsg(e.target.value)}
+                                    placeholder="Tell me about your project..."
+                                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-zinc-600 focus:outline-none focus:border-karnataka-yellow/50 focus:ring-1 focus:ring-karnataka-yellow/30 transition-all resize-none" />
+                            </div>
+
+                            {error && <p className="text-red-400 text-sm">{error}</p>}
+
+                            <motion.button type="submit" disabled={sending}
+                                className="w-full btn-karnataka py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                                whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+                                {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mail className="h-5 w-5" />}
+                                {sending ? 'Sending...' : 'Send Message'}
+                            </motion.button>
+
+                            <p className="text-center text-xs text-zinc-600 mt-4">
+                                Or follow me on{' '}
+                                <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className="text-karnataka-yellow hover:underline">Instagram</a>
+                            </p>
+                        </form>
+                    )}
+                </motion.div>
+            </div>
+        </section>
+    )
+}
 
 // --- FOOTER ---
 const Footer = () => (
@@ -636,7 +705,7 @@ export default function HomePage() {
             <StatsSection />
             <VideoLibrary videos={videos} loading={loading} />
             <AboutSection />
-            <CTA />
+            <ContactForm />
             <Footer />
         </main>
     )
