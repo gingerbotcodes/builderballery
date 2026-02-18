@@ -1,305 +1,123 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import {
-    Instagram,
-    Video,
-    Grid3X3,
-    Search,
-    Star,
-    Award,
-    ArrowUpRight,
-    Menu,
-    X,
-    ChevronRight,
-    PlayCircle,
-    Layers,
-    Users,
-    Clock,
-    Heart,
-    MessageCircle,
-    Eye,
-    Share2,
-    Bookmark,
-    Sparkles,
-    Building2,
-    HardHat,
-    ArrowRight,
-    ExternalLink,
-    MapPin,
-    Calendar,
-    TrendingUp
+    Instagram, Video, Grid3X3, Search, Star, Award, ArrowUpRight, Menu, X,
+    ChevronRight, PlayCircle, Layers, Users, Clock, Heart, MessageCircle,
+    Eye, Share2, Bookmark, Sparkles, Building2, HardHat, ArrowRight,
+    ExternalLink, MapPin, Calendar, TrendingUp, Home, Compass, Package,
+    Landmark, FileText, Download, Phone, Mail, Zap
 } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { supabase, type Video as VideoType, type VideoCategory, CATEGORY_LABELS } from '@/lib/supabase'
 
-// Utility for class merging
-function cn(...inputs: ClassValue[]) {
-    return twMerge(clsx(inputs))
-}
+function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)) }
 
-// --- Types ---
-interface MediaItem {
-    id: string
-    type: 'image' | 'video' | 'reel'
-    url: string
-    thumbnail?: string
-    caption?: string
-    likes?: number
-    comments?: number
-    views?: number
-    duration?: string
-    timestamp?: string
-    isReel?: boolean
-}
+const INSTAGRAM_URL = 'https://www.instagram.com/builder_ballery/'
 
-interface Stat {
-    value: string
-    label: string
-    icon: React.ReactNode
-    trend?: string
-}
-
-// --- Mock Data for Initial Render ---
-const INITIAL_INSTAGRAM_DATA: MediaItem[] = [
-    {
-        id: '1',
-        type: 'reel',
-        url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-        thumbnail: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=2070&auto=format&fit=crop',
-        caption: 'Concrete pouring techniques for large slabs - Watch the full process!',
-        likes: 12400,
-        views: 150000,
-        duration: '0:58',
-        isReel: true,
-        timestamp: '2 hours ago'
-    },
-    {
-        id: '2',
-        type: 'image',
-        url: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=80&w=2070&auto=format&fit=crop',
-        caption: 'Structural steel installation complete! 47 floors of pure engineering excellence.',
-        likes: 8500,
-        comments: 450,
-        timestamp: '1 day ago'
-    },
-    {
-        id: '3',
-        type: 'reel',
-        url: 'https://www.youtube.com/embed/04GiqLjRO3A',
-        thumbnail: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=2070&auto=format&fit=crop',
-        caption: 'Foundation construction time-lapse - 6 months in 60 seconds',
-        likes: 21000,
-        views: 250000,
-        duration: '1:00',
-        isReel: true,
-        timestamp: '3 days ago'
-    },
-    {
-        id: '4',
-        type: 'image',
-        url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=2070&auto=format&fit=crop',
-        caption: 'High-rise building under construction. The view from the top is breathtaking!',
-        likes: 6800,
-        comments: 320,
-        timestamp: '5 days ago'
-    },
-    {
-        id: '5',
-        type: 'reel',
-        url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-        thumbnail: 'https://images.unsplash.com/photo-1551434678-e076c223a692?q=80&w=2070&auto=format&fit=crop',
-        caption: 'Heavy machinery operations - The power of modern construction',
-        likes: 15600,
-        views: 180000,
-        duration: '0:45',
-        isReel: true,
-        timestamp: '1 week ago'
-    },
-    {
-        id: '6',
-        type: 'image',
-        url: 'https://images.unsplash.com/photo-1518448976907-7d7d76498e35?q=80&w=2070&auto=format&fit=crop',
-        caption: 'Bridge construction details - Engineering meets art',
-        likes: 9200,
-        comments: 560,
-        timestamp: '2 weeks ago'
-    }
+// --- Constants ---
+const STATS: { value: string; label: string; suffix?: string; icon: React.ReactNode }[] = [
+    { value: '226', suffix: 'K+', label: 'Followers', icon: <Users className="w-5 h-5" /> },
+    { value: '260', suffix: '+', label: 'Reels', icon: <Video className="w-5 h-5" /> },
+    { value: '10', suffix: 'M+', label: 'Views', icon: <Eye className="w-5 h-5" /> },
+    { value: '15', suffix: '+', label: 'Years', icon: <HardHat className="w-5 h-5" /> },
 ]
 
-const STATS: Stat[] = [
-    {
-        value: '50K+',
-        label: 'Followers',
-        icon: <Users className="w-5 h-5" />,
-        trend: '+2.5K this month'
-    },
-    {
-        value: '500+',
-        label: 'Posts',
-        icon: <Grid3X3 className="w-5 h-5" />,
-        trend: '12 this week'
-    },
-    {
-        value: '5M+',
-        label: 'Total Views',
-        icon: <Eye className="w-5 h-5" />,
-        trend: '+500K this month'
-    },
-    {
-        value: '15',
-        label: 'Awards',
-        icon: <Award className="w-5 h-5" />,
-        trend: '3 pending'
-    }
-]
-
-// --- Animation Variants ---
-const fadeInUp = {
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -20 }
+const CATEGORY_COLORS: Record<VideoCategory, { bg: string; text: string; border: string }> = {
+    vastu_tips: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20' },
+    materials_info: { bg: 'bg-yellow-500/10', text: 'text-yellow-400', border: 'border-yellow-500/20' },
+    govt_schemes: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20' },
 }
 
-const staggerContainer = {
-    animate: {
-        transition: {
-            staggerChildren: 0.1
-        }
-    }
+const CATEGORY_ICONS: Record<VideoCategory, React.ReactNode> = {
+    vastu_tips: <Compass className="h-4 w-4" />,
+    materials_info: <Package className="h-4 w-4" />,
+    govt_schemes: <Landmark className="h-4 w-4" />,
 }
 
-const scaleIn = {
-    initial: { opacity: 0, scale: 0.95 },
-    animate: { opacity: 1, scale: 1 },
-    exit: { opacity: 0, scale: 0.95 }
-}
+// Animation presets
+const fadeUp = { initial: { opacity: 0, y: 30 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -20 } }
+const stagger = { animate: { transition: { staggerChildren: 0.08 } } }
 
-// --- Components ---
-
-// 1. Navbar
+// --- NAVBAR ---
 const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false)
     const [scrolled, setScrolled] = useState(false)
-
     useEffect(() => {
-        const handleScroll = () => {
-            setScrolled(window.scrollY > 20)
-        }
-        window.addEventListener('scroll', handleScroll)
-        return () => window.removeEventListener('scroll', handleScroll)
+        const h = () => setScrolled(window.scrollY > 20)
+        window.addEventListener('scroll', h)
+        return () => window.removeEventListener('scroll', h)
     }, [])
 
     return (
-        <motion.nav
-            initial={{ y: -100 }}
-            animate={{ y: 0 }}
-            className={cn(
-                "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-                scrolled
-                    ? "bg-white/95 backdrop-blur-xl shadow-lg border-b border-gray-100"
-                    : "bg-transparent"
-            )}
-        >
+        <motion.nav initial={{ y: -100 }} animate={{ y: 0 }} transition={{ duration: 0.6 }}
+            className={cn("fixed top-0 left-0 right-0 z-50 transition-all duration-500",
+                scrolled ? "bg-zinc-950/80 backdrop-blur-2xl border-b border-white/5" : "bg-transparent"
+            )}>
+            {/* Karnataka stripe */}
+            <div className="h-[2px] karnataka-stripe" />
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-20">
-                    {/* Logo */}
-                    <motion.a
-                        href="#"
-                        className="flex items-center gap-3 group"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                    >
+                    <motion.a href="#" className="flex items-center gap-3 group" whileHover={{ scale: 1.02 }}>
                         <div className="relative">
-                            <div className="absolute inset-0 bg-gradient-to-br from-primary-400 to-primary-600 rounded-xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity" />
-                            <div className="relative bg-gradient-to-br from-primary-500 to-primary-700 p-2.5 rounded-xl">
+                            <div className="absolute inset-0 bg-gradient-to-br from-karnataka-red to-karnataka-yellow rounded-xl blur-lg opacity-40 group-hover:opacity-70 transition-opacity" />
+                            <div className="relative bg-gradient-to-br from-karnataka-red to-karnataka-yellow p-2.5 rounded-xl">
                                 <Building2 className="h-6 w-6 text-white" />
                             </div>
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-xl font-bold text-gray-900 tracking-tight">
-                                Builder <span className="bg-gradient-to-r from-primary-600 to-primary-400 bg-clip-text text-transparent">Ballery</span>
+                            <span className="text-xl font-display font-bold text-white tracking-tight">
+                                Builder <span className="gradient-text-karnataka">Ballery</span>
                             </span>
-                            <span className="text-xs text-gray-500 font-medium -mt-0.5">Civil Engineering</span>
+                            <span className="text-[10px] text-zinc-500 font-medium tracking-wider uppercase">Civil Engineering • ಸಿವಿಲ್ ಇಂಜಿನಿಯರಿಂಗ್</span>
                         </div>
                     </motion.a>
 
-                    {/* Desktop Navigation */}
                     <div className="hidden md:flex items-center gap-1">
-                        {['Home', 'Work', 'About', 'Contact'].map((item, i) => (
-                            <motion.a
-                                key={item}
-                                href={`#${item.toLowerCase()}`}
-                                className="relative px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors group"
-                                initial={{ opacity: 0, y: -20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: i * 0.1 }}
-                            >
+                        {['Home', 'Videos', 'About', 'Contact'].map((item, i) => (
+                            <motion.a key={item} href={`#${item.toLowerCase()}`}
+                                className="relative px-4 py-2 text-sm font-medium text-zinc-400 hover:text-white transition-colors group"
+                                initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
                                 {item}
-                                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-0.5 bg-primary-500 group-hover:w-full transition-all duration-300" />
+                                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-0.5 bg-gradient-to-r from-karnataka-red to-karnataka-yellow group-hover:w-full transition-all duration-300 rounded-full" />
                             </motion.a>
                         ))}
                     </div>
 
-                    {/* CTA Button */}
                     <div className="hidden md:flex items-center gap-3">
-                        <motion.a
-                            href="https://instagram.com/builderballery"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="group relative overflow-hidden bg-gray-900 text-white px-5 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 hover:shadow-lg hover:shadow-gray-900/20 transition-all duration-300"
-                            whileHover={{ scale: 1.02, y: -1 }}
-                            whileTap={{ scale: 0.98 }}
-                        >
-                            <span className="relative z-10 flex items-center gap-2">
-                                <Instagram className="h-4 w-4" />
-                                Follow
-                            </span>
-                            <div className="absolute inset-0 bg-gradient-to-r from-primary-600 to-primary-500 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                        <motion.a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer"
+                            className="group relative overflow-hidden px-5 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 transition-all duration-300 border border-white/10 hover:border-karnataka-yellow/40"
+                            style={{ background: 'linear-gradient(135deg, rgba(204,0,0,0.15), rgba(255,215,0,0.1))' }}
+                            whileHover={{ scale: 1.02, y: -1 }} whileTap={{ scale: 0.98 }}>
+                            <Instagram className="h-4 w-4 text-karnataka-yellow" />
+                            <span className="text-white">Follow</span>
                         </motion.a>
                     </div>
 
-                    {/* Mobile Menu Button */}
-                    <motion.button
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setIsOpen(!isOpen)}
-                        className="md:hidden p-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors"
-                    >
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={() => setIsOpen(!isOpen)}
+                        className="md:hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-white">
                         {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                     </motion.button>
                 </div>
             </div>
 
-            {/* Mobile Menu */}
             <AnimatePresence>
                 {isOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="md:hidden bg-white/95 backdrop-blur-xl border-b border-gray-100"
-                    >
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                        className="md:hidden bg-zinc-950/95 backdrop-blur-2xl border-b border-white/5">
                         <div className="px-4 py-6 space-y-2">
-                            {['Home', 'Work', 'About', 'Contact'].map((item) => (
-                                <a
-                                    key={item}
-                                    href={`#${item.toLowerCase()}`}
-                                    className="block px-4 py-3 rounded-xl text-gray-700 hover:bg-gray-100 font-medium transition-colors"
-                                    onClick={() => setIsOpen(false)}
-                                >
-                                    {item}
-                                </a>
+                            {['Home', 'Videos', 'About', 'Contact'].map((item) => (
+                                <a key={item} href={`#${item.toLowerCase()}`}
+                                    className="block px-4 py-3 rounded-xl text-zinc-300 hover:bg-white/5 font-medium transition-colors"
+                                    onClick={() => setIsOpen(false)}>{item}</a>
                             ))}
-                            <a
-                                href="https://instagram.com/builderballery"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center justify-center gap-2 bg-gray-900 text-white px-5 py-3 rounded-xl font-semibold mt-4"
-                            >
-                                <Instagram className="h-4 w-4" />
-                                Follow on Instagram
+                            <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer"
+                                className="flex items-center justify-center gap-2 btn-karnataka text-white px-5 py-3 rounded-xl font-semibold mt-4">
+                                <Instagram className="h-4 w-4" /> Follow on Instagram
                             </a>
                         </div>
                     </motion.div>
@@ -309,286 +127,125 @@ const Navbar = () => {
     )
 }
 
-// 2. Hero Section
+// --- HERO ---
 const Hero = () => {
     return (
-        <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
-            {/* Background Elements */}
-            <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-primary-50/30" />
-            <div className="absolute inset-0 bg-grid opacity-50" />
-
-            {/* Decorative Elements */}
-            <div className="absolute top-20 right-0 w-96 h-96 bg-primary-200/30 rounded-full blur-3xl" />
-            <div className="absolute bottom-20 left-0 w-80 h-80 bg-primary-300/20 rounded-full blur-3xl" />
-
-            {/* Floating Elements */}
-            <motion.div
-                className="absolute top-32 right-[20%] hidden lg:block"
-                animate={{ y: [0, -20, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            >
-                <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl shadow-xl border border-gray-100">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-primary-100 p-2 rounded-xl">
-                            <TrendingUp className="h-5 w-5 text-primary-600" />
-                        </div>
-                        <div>
-                            <p className="text-sm font-semibold text-gray-900">+25% Growth</p>
-                            <p className="text-xs text-gray-500">This month</p>
-                        </div>
-                    </div>
-                </div>
-            </motion.div>
-
-            <motion.div
-                className="absolute bottom-32 left-[15%] hidden lg:block"
-                animate={{ y: [0, 20, 0] }}
-                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            >
-                <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl shadow-xl border border-gray-100">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-yellow-100 p-2 rounded-xl">
-                            <Award className="h-5 w-5 text-yellow-600" />
-                        </div>
-                        <div>
-                            <p className="text-sm font-semibold text-gray-900">Award Winner</p>
-                            <p className="text-xs text-gray-500">Best Content 2024</p>
-                        </div>
-                    </div>
-                </div>
-            </motion.div>
+        <section id="home" className="relative min-h-screen flex items-center pt-20 overflow-hidden bg-zinc-950">
+            {/* Background layers */}
+            <div className="absolute inset-0 bg-grid-dark" />
+            <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-karnataka-red/8 rounded-full blur-[120px]" />
+            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-karnataka-yellow/6 rounded-full blur-[120px]" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-karnataka-red/3 rounded-full blur-[200px]" />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-20">
                 <div className="grid lg:grid-cols-2 gap-16 items-center">
-                    {/* Content */}
-                    <motion.div
-                        initial="initial"
-                        animate="animate"
-                        variants={staggerContainer}
-                        className="space-y-8"
-                    >
-                        <motion.div
-                            variants={fadeInUp}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-50 border border-primary-100"
-                        >
-                            <Sparkles className="h-4 w-4 text-primary-600" />
-                            <span className="text-sm font-semibold text-primary-700">Award Winning Civil Engineer</span>
+                    <motion.div initial="initial" animate="animate" variants={stagger} className="space-y-8">
+                        {/* Trust Badge */}
+                        <motion.div variants={fadeUp}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border border-karnataka-red/20">
+                            <div className="w-2 h-2 rounded-full bg-karnataka-red animate-pulse" />
+                            <span className="text-sm font-medium text-zinc-300">Trusted by 2 Lakh+ People • 2 ಲಕ್ಷ+ ಜನರ ನಂಬಿಕೆ</span>
                         </motion.div>
 
-                        <motion.h1
-                            variants={fadeInUp}
-                            className="text-5xl sm:text-6xl lg:text-7xl font-bold text-gray-900 leading-[1.1] tracking-tight"
-                        >
-                            Building
+                        {/* Main Heading */}
+                        <motion.h1 variants={fadeUp}
+                            className="text-5xl sm:text-6xl lg:text-7xl font-display font-bold text-white leading-[1.05] tracking-tight">
+                            ಕನಸುಗಳನ್ನು
                             <br />
-                            <span className="relative">
-                                <span className="bg-gradient-to-r from-primary-600 via-primary-500 to-green-500 bg-clip-text text-transparent">
-                                    Dreams
-                                </span>
-                                <motion.svg
-                                    className="absolute -bottom-2 left-0 w-full"
-                                    viewBox="0 0 200 12"
-                                    initial={{ pathLength: 0 }}
-                                    animate={{ pathLength: 1 }}
-                                    transition={{ delay: 0.5, duration: 1 }}
-                                >
-                                    <motion.path
-                                        d="M0 6 Q50 0, 100 6 T200 6"
-                                        fill="none"
-                                        stroke="url(#gradient)"
-                                        strokeWidth="3"
-                                        strokeLinecap="round"
-                                    />
-                                    <defs>
-                                        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                            <stop offset="0%" stopColor="#16a34a" />
-                                            <stop offset="100%" stopColor="#22c55e" />
-                                        </linearGradient>
-                                    </defs>
-                                </motion.svg>
-                            </span>
+                            <span className="gradient-text-karnataka">ನನಸಾಗಿಸುವುದು</span>
                             <br />
-                            into Reality
+                            <span className="text-zinc-500 text-2xl sm:text-3xl font-normal tracking-normal">Building Dreams Into Reality</span>
                         </motion.h1>
 
-                        <motion.p
-                            variants={fadeInUp}
-                            className="text-lg sm:text-xl text-gray-600 leading-relaxed max-w-xl"
-                        >
-                            Documenting the art of construction and concrete wizardry.
-                            From complex engineering projects to beautiful architectural forms.
-                            <span className="text-gray-900 font-medium"> Join 50K+ followers</span> on this journey.
+                        <motion.p variants={fadeUp} className="text-lg sm:text-xl text-zinc-400 leading-relaxed max-w-xl">
+                            ವಾಸ್ತು ಸಲಹೆಗಳು, ನಿರ್ಮಾಣ ಸಾಮಗ್ರಿಗಳು ಮತ್ತು ಸರ್ಕಾರಿ ಯೋಜನೆಗಳಿಗಾಗಿ ನಿಮ್ಮ ಅತ್ಯುತ್ತಮ ಮೂಲ.
+                            <br />
+                            <span className="text-zinc-500">Your source for Vastu, materials & govt schemes.</span>
                         </motion.p>
 
-                        <motion.div
-                            variants={fadeInUp}
-                            className="flex flex-col sm:flex-row gap-4"
-                        >
-                            <motion.a
-                                href="#work"
-                                className="group relative overflow-hidden bg-gray-900 text-white px-8 py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 hover:shadow-2xl hover:shadow-gray-900/30 transition-all duration-300"
-                                whileHover={{ scale: 1.02, y: -2 }}
-                                whileTap={{ scale: 0.98 }}
-                            >
-                                <span className="relative z-10 flex items-center gap-2">
-                                    View My Work
-                                    <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                                </span>
-                                <div className="absolute inset-0 bg-gradient-to-r from-primary-600 to-primary-500 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                        {/* CTAs */}
+                        <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4">
+                            <motion.a href="#videos"
+                                className="btn-karnataka px-8 py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2"
+                                whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}>
+                                <PlayCircle className="h-5 w-5" /> Watch Videos
                             </motion.a>
-
-                            <motion.a
-                                href="https://instagram.com/builderballery"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="group bg-white text-gray-900 px-8 py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 border-2 border-gray-200 hover:border-primary-500 hover:text-primary-600 hover:shadow-lg transition-all duration-300"
-                                whileHover={{ scale: 1.02, y: -2 }}
-                                whileTap={{ scale: 0.98 }}
-                            >
-                                <Instagram className="h-5 w-5" />
-                                Follow Me
+                            <motion.a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer"
+                                className="btn-glass px-8 py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2"
+                                whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}>
+                                <Instagram className="h-5 w-5" /> Follow Me
                             </motion.a>
                         </motion.div>
 
-                        {/* Trust Indicators */}
-                        <motion.div
-                            variants={fadeInUp}
-                            className="flex items-center gap-6 pt-4"
-                        >
+                        {/* Social Proof */}
+                        <motion.div variants={fadeUp} className="flex items-center gap-4 pt-2">
                             <div className="flex -space-x-3">
-                                {[1, 2, 3, 4].map((i) => (
-                                    <div
-                                        key={i}
-                                        className="w-10 h-10 rounded-full border-2 border-white bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-bold shadow-lg"
-                                    >
-                                        {String.fromCharCode(65 + i - 1)}
+                                {[1, 2, 3, 4, 5].map((i) => (
+                                    <div key={i} className="w-9 h-9 rounded-full border-2 border-zinc-900 bg-gradient-to-br from-karnataka-red to-karnataka-yellow flex items-center justify-center text-white text-xs font-bold">
+                                        {String.fromCharCode(64 + i)}
                                     </div>
                                 ))}
                             </div>
-                            <div className="text-sm">
-                                <p className="font-semibold text-gray-900">Join 50,000+ followers</p>
-                                <p className="text-gray-500">Growing every day</p>
+                            <div>
+                                <p className="text-sm font-semibold text-white">226K+ followers</p>
+                                <p className="text-xs text-zinc-500">Growing every day</p>
                             </div>
                         </motion.div>
                     </motion.div>
 
-                    {/* Featured Reel Widget */}
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9, x: 50 }}
-                        animate={{ opacity: 1, scale: 1, x: 0 }}
-                        transition={{ delay: 0.3, duration: 0.6 }}
-                        className="relative"
-                    >
-                        {/* Glow Effect */}
-                        <div className="absolute -inset-4 bg-gradient-to-r from-primary-500/20 via-green-500/20 to-primary-500/20 rounded-[3rem] blur-2xl opacity-60" />
+                    {/* Hero Visual */}
+                    <motion.div initial={{ opacity: 0, scale: 0.9, x: 50 }} animate={{ opacity: 1, scale: 1, x: 0 }}
+                        transition={{ delay: 0.3, duration: 0.6 }} className="relative hidden lg:block">
+                        <div className="absolute -inset-4 bg-gradient-to-r from-karnataka-red/20 via-karnataka-yellow/10 to-karnataka-red/20 rounded-[3rem] blur-2xl animate-pulse-glow" />
+                        <div className="relative border-gradient rounded-[2rem] p-1">
+                            <div className="bg-zinc-900 rounded-[1.85rem] p-4">
+                                <div className="relative aspect-[4/5] rounded-2xl overflow-hidden">
+                                    <Image src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=2070&auto=format&fit=crop"
+                                        alt="Builder Ballery" fill className="object-cover" priority />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/30 to-transparent" />
 
-                        <div className="relative bg-white rounded-[2rem] p-3 shadow-2xl border border-gray-100">
-                            {/* Video Container */}
-                            <div className="relative aspect-[9/16] sm:aspect-[4/5] rounded-3xl overflow-hidden bg-gray-900">
-                                <Image
-                                    src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=2070&auto=format&fit=crop"
-                                    alt="Featured Reel"
-                                    fill
-                                    className="object-cover"
-                                    priority
-                                />
-
-                                {/* Overlay */}
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-
-                                {/* Play Button */}
-                                <motion.div
-                                    className="absolute inset-0 flex items-center justify-center"
-                                    whileHover={{ scale: 1.1 }}
-                                >
-                                    <div className="bg-white/20 backdrop-blur-md p-6 rounded-full border border-white/30">
-                                        <PlayCircle className="h-12 w-12 text-white" />
+                                    {/* Reel badge */}
+                                    <div className="absolute top-4 left-4 flex items-center gap-2 glass-dark px-3 py-1.5 rounded-full">
+                                        <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                                        <span className="text-white text-xs font-semibold">LIVE</span>
                                     </div>
-                                </motion.div>
 
-                                {/* Reel Badge */}
-                                <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full">
-                                    <Video className="h-4 w-4 text-white" />
-                                    <span className="text-white text-sm font-semibold">Reel</span>
-                                </div>
-
-                                {/* Duration */}
-                                <div className="absolute top-4 right-4 bg-black/40 backdrop-blur-md px-2 py-1 rounded-lg">
-                                    <span className="text-white text-xs font-medium">0:58</span>
-                                </div>
-
-                                {/* Content */}
-                                <div className="absolute bottom-0 left-0 right-0 p-6">
-                                    <div className="flex items-center gap-2 text-white/80 text-sm mb-2">
-                                        <Clock className="h-4 w-4" />
-                                        <span>2 hours ago</span>
+                                    {/* Content overlay */}
+                                    <div className="absolute bottom-0 left-0 right-0 p-6">
+                                        <p className="text-white/60 text-xs mb-1 flex items-center gap-1"><Clock className="h-3 w-3" /> Latest Reel</p>
+                                        <h3 className="text-white font-bold leading-tight mb-3">ನಿರ್ಮಾಣ ಸ್ಥಳದಲ್ಲಿ ಕಾಂಕ್ರೀಟ್ ಹಾಕುವ ಪ್ರಕ್ರಿಯೆ</h3>
+                                        <div className="flex items-center gap-4 text-white/80">
+                                            <span className="flex items-center gap-1 text-xs"><Heart className="h-3 w-3" /> 12.4K</span>
+                                            <span className="flex items-center gap-1 text-xs"><Eye className="h-3 w-3" /> 150K</span>
+                                            <span className="flex items-center gap-1 text-xs"><MessageCircle className="h-3 w-3" /> 892</span>
+                                        </div>
                                     </div>
-                                    <h3 className="text-white text-lg font-bold leading-tight mb-3">
-                                        Pouring 1000+ yards of concrete in one day. Watch the full process!
-                                    </h3>
+                                </div>
+                                {/* Engagement Bar */}
+                                <div className="flex items-center justify-between px-2 pt-4">
                                     <div className="flex items-center gap-4">
-                                        <div className="flex items-center gap-1.5 text-white/90">
-                                            <Heart className="h-4 w-4" />
-                                            <span className="text-sm font-medium">12.4K</span>
-                                        </div>
-                                        <div className="flex items-center gap-1.5 text-white/90">
-                                            <Eye className="h-4 w-4" />
-                                            <span className="text-sm font-medium">150K</span>
-                                        </div>
-                                        <div className="flex items-center gap-1.5 text-white/90">
-                                            <MessageCircle className="h-4 w-4" />
-                                            <span className="text-sm font-medium">458</span>
-                                        </div>
+                                        {[Heart, MessageCircle, Share2].map((Icon, i) => (
+                                            <motion.button key={i} whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.9 }}
+                                                className="text-zinc-400 hover:text-white transition-colors">
+                                                <Icon className="h-5 w-5" />
+                                            </motion.button>
+                                        ))}
                                     </div>
-                                </div>
-                            </div>
-
-                            {/* Engagement Bar */}
-                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl mt-3">
-                                <div className="flex items-center gap-4">
-                                    <motion.button
-                                        whileHover={{ scale: 1.1 }}
-                                        whileTap={{ scale: 0.9 }}
-                                        className="flex items-center gap-2 text-gray-600 hover:text-red-500 transition-colors"
-                                    >
-                                        <Heart className="h-5 w-5" />
-                                    </motion.button>
-                                    <motion.button
-                                        whileHover={{ scale: 1.1 }}
-                                        whileTap={{ scale: 0.9 }}
-                                        className="flex items-center gap-2 text-gray-600 hover:text-primary-600 transition-colors"
-                                    >
-                                        <MessageCircle className="h-5 w-5" />
-                                    </motion.button>
-                                    <motion.button
-                                        whileHover={{ scale: 1.1 }}
-                                        whileTap={{ scale: 0.9 }}
-                                        className="flex items-center gap-2 text-gray-600 hover:text-primary-600 transition-colors"
-                                    >
-                                        <Share2 className="h-5 w-5" />
+                                    <motion.button whileHover={{ scale: 1.2 }} className="text-zinc-400 hover:text-karnataka-yellow transition-colors">
+                                        <Bookmark className="h-5 w-5" />
                                     </motion.button>
                                 </div>
-                                <motion.button
-                                    whileHover={{ scale: 1.1 }}
-                                    whileTap={{ scale: 0.9 }}
-                                    className="text-gray-600 hover:text-primary-600 transition-colors"
-                                >
-                                    <Bookmark className="h-5 w-5" />
-                                </motion.button>
                             </div>
                         </div>
                     </motion.div>
                 </div>
             </div>
 
-            {/* Scroll Indicator */}
-            <motion.div
-                className="absolute bottom-8 left-1/2 -translate-x-1/2"
-                animate={{ y: [0, 10, 0] }}
-                transition={{ duration: 2, repeat: Infinity }}
-            >
-                <div className="flex flex-col items-center gap-2 text-gray-400">
-                    <span className="text-xs font-medium">Scroll to explore</span>
+            {/* Scroll indicator */}
+            <motion.div className="absolute bottom-8 left-1/2 -translate-x-1/2"
+                animate={{ y: [0, 10, 0] }} transition={{ duration: 2, repeat: Infinity }}>
+                <div className="flex flex-col items-center gap-2 text-zinc-600">
+                    <span className="text-xs font-medium tracking-wider uppercase">Scroll</span>
                     <ChevronRight className="h-4 w-4 rotate-90" />
                 </div>
             </motion.div>
@@ -596,251 +253,151 @@ const Hero = () => {
     )
 }
 
-// 3. Stats Section
+// --- STATS ---
 const StatsSection = () => (
-    <section className="relative py-20 bg-white border-y border-gray-100 overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 bg-dots opacity-50" />
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
-                {STATS.map((stat, index) => (
-                    <motion.div
-                        key={stat.label}
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: index * 0.1 }}
-                        className="relative group"
-                    >
-                        <div className="text-center p-6 rounded-2xl bg-gray-50/50 hover:bg-white hover:shadow-xl transition-all duration-300 border border-transparent hover:border-gray-100">
-                            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary-100 text-primary-600 mb-4 group-hover:scale-110 transition-transform">
+    <section className="relative py-1 overflow-hidden">
+        <div className="h-[2px] karnataka-stripe opacity-40" />
+        <div className="bg-zinc-900/80 backdrop-blur-xl border-y border-white/5">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="grid grid-cols-2 lg:grid-cols-4">
+                    {STATS.map((stat, i) => (
+                        <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+                            className={cn("py-10 px-6 text-center group", i < 3 && "lg:border-r border-white/5")}>
+                            <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-karnataka-red/20 to-karnataka-yellow/20 text-karnataka-yellow mb-4 group-hover:scale-110 transition-transform">
                                 {stat.icon}
                             </div>
-                            <div className="text-3xl sm:text-4xl font-bold text-gray-900 mb-1">{stat.value}</div>
-                            <div className="text-sm text-gray-500 font-medium mb-2">{stat.label}</div>
-                            {stat.trend && (
-                                <div className="text-xs text-primary-600 font-semibold">{stat.trend}</div>
-                            )}
-                        </div>
-                    </motion.div>
-                ))}
+                            <div className="text-3xl sm:text-4xl font-display font-bold text-white mb-1">
+                                {stat.value}<span className="gradient-text-karnataka">{stat.suffix}</span>
+                            </div>
+                            <div className="text-sm text-zinc-500 font-medium">{stat.label}</div>
+                        </motion.div>
+                    ))}
+                </div>
             </div>
         </div>
     </section>
 )
 
-// 4. Instagram Feed
-const InstagramFeed = ({ posts, loading }: { posts: MediaItem[]; loading: boolean }) => {
-    const [filter, setFilter] = useState<'all' | 'reels' | 'posts'>('all')
+// --- VIDEO LIBRARY (placeholder - rest comes in next write) ---
+const VideoLibrary = ({ videos, loading }: { videos: VideoType[]; loading: boolean }) => {
+    const [filter, setFilter] = useState<VideoCategory | 'all'>('all')
+    const filteredVideos = videos.filter(v => filter === 'all' || v.category === filter)
 
-    const filteredPosts = posts.filter(post => {
-        if (filter === 'all') return true
-        if (filter === 'reels') return post.isReel
-        if (filter === 'posts') return !post.isReel
-        return true
-    })
+    const tabs: { key: VideoCategory | 'all'; label: string; icon: React.ReactNode }[] = [
+        { key: 'all', label: 'All', icon: <Grid3X3 className="h-4 w-4" /> },
+        { key: 'vastu_tips', label: 'Vastu', icon: <Compass className="h-4 w-4" /> },
+        { key: 'materials_info', label: 'Materials', icon: <Package className="h-4 w-4" /> },
+        { key: 'govt_schemes', label: 'Govt', icon: <Landmark className="h-4 w-4" /> },
+    ]
 
     return (
-        <section id="work" className="py-24 lg:py-32 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden">
-            {/* Background Elements */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-primary-100/50 rounded-full blur-3xl" />
-            <div className="absolute bottom-0 left-0 w-80 h-80 bg-primary-200/30 rounded-full blur-3xl" />
+        <section id="videos" className="py-24 lg:py-32 bg-zinc-950 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-karnataka-red/5 rounded-full blur-[120px]" />
+            <div className="absolute bottom-0 left-0 w-80 h-80 bg-karnataka-yellow/5 rounded-full blur-[120px]" />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-                {/* Header */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    className="text-center mb-16"
-                >
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-50 border border-primary-100 mb-6">
-                        <Grid3X3 className="h-4 w-4 text-primary-600" />
-                        <span className="text-sm font-semibold text-primary-700">Instagram Feed</span>
+                <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border border-karnataka-red/20 mb-6">
+                        <Video className="h-4 w-4 text-karnataka-red" />
+                        <span className="text-sm font-semibold text-zinc-300">Video Library • ವೀಡಿಯೊ</span>
                     </div>
-                    <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
-                        Recent <span className="bg-gradient-to-r from-primary-600 to-green-500 bg-clip-text text-transparent">Creations</span>
+                    <h2 className="text-4xl sm:text-5xl font-display font-bold text-white mb-4">
+                        Latest <span className="gradient-text-karnataka">Constructions</span>
                     </h2>
-                    <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                        A curated look at my latest projects, reels, and construction adventures.
+                    <p className="text-lg text-zinc-500 max-w-2xl mx-auto">
+                        ಇತ್ತೀಚಿನ ನಿರ್ಮಾಣ ವೀಡಿಯೊಗಳು — Explore the latest construction videos and Vastu tips.
                     </p>
                 </motion.div>
 
                 {/* Filter Tabs */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    className="flex flex-wrap justify-center gap-3 mb-12"
-                >
-                    {[
-                        { key: 'all', label: 'All Posts', icon: <Grid3X3 className="h-4 w-4" /> },
-                        { key: 'reels', label: 'Reels', icon: <Video className="h-4 w-4" /> },
-                        { key: 'posts', label: 'Posts', icon: <Layers className="h-4 w-4" /> }
-                    ].map((tab) => (
-                        <motion.button
-                            key={tab.key}
-                            onClick={() => setFilter(tab.key as typeof filter)}
-                            className={cn(
-                                "flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-300",
+                <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+                    className="flex flex-wrap justify-center gap-2 mb-12">
+                    {tabs.map((tab) => (
+                        <motion.button key={tab.key} onClick={() => setFilter(tab.key)}
+                            className={cn("flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-300",
                                 filter === tab.key
-                                    ? "bg-gray-900 text-white shadow-lg"
-                                    : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+                                    ? "bg-gradient-to-r from-karnataka-red to-karnataka-yellow text-white shadow-lg shadow-red-500/10"
+                                    : "glass text-zinc-400 hover:text-white"
                             )}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                        >
-                            {tab.icon}
-                            {tab.label}
+                            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                            {tab.icon}{tab.label}
                         </motion.button>
                     ))}
                 </motion.div>
 
-                {/* Posts Grid */}
+                {/* Video Grid */}
                 {loading ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         {[1, 2, 3].map((i) => (
                             <div key={i} className="space-y-4 animate-pulse">
-                                <div className="aspect-square bg-gray-200 rounded-3xl" />
-                                <div className="h-4 bg-gray-200 rounded w-3/4" />
-                                <div className="h-4 bg-gray-200 rounded w-1/2" />
+                                <div className="aspect-video bg-zinc-800 rounded-2xl" />
+                                <div className="h-4 bg-zinc-800 rounded w-3/4" />
+                                <div className="h-4 bg-zinc-800 rounded w-1/2" />
                             </div>
                         ))}
                     </div>
                 ) : (
-                    <motion.div
-                        initial="initial"
-                        whileInView="animate"
-                        variants={staggerContainer}
-                        viewport={{ once: true }}
-                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-                    >
-                        {filteredPosts.map((post, index) => (
-                            <motion.article
-                                key={post.id}
-                                variants={scaleIn}
-                                whileHover={{ y: -8 }}
-                                className="group relative bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100"
-                            >
-                                {/* Image/Video Container */}
-                                <div className="relative aspect-square overflow-hidden">
-                                    <Image
-                                        src={post.thumbnail || post.url}
-                                        alt={post.caption || "Post"}
-                                        fill
-                                        className="object-cover transition-transform duration-700 group-hover:scale-110"
-                                    />
+                    <motion.div initial="initial" whileInView="animate" variants={stagger} viewport={{ once: true }}
+                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <AnimatePresence mode="popLayout">
+                            {filteredVideos.map((video) => (
+                                <motion.div key={video.id} layout
+                                    initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.3 }}>
+                                    <Link href={`/video/${video.id}`}>
+                                        <motion.article whileHover={{ y: -8 }}
+                                            className="group relative card-dark rounded-2xl overflow-hidden cursor-pointer">
+                                            <div className="relative aspect-video overflow-hidden">
+                                                <Image src={video.thumbnail_url || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=2070&auto=format&fit=crop'}
+                                                    alt={video.title} fill className="object-cover transition-transform duration-700 group-hover:scale-110" />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/20 to-transparent opacity-60 group-hover:opacity-90 transition-opacity duration-300" />
 
-                                    {/* Overlay */}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                                <div className={cn("absolute top-4 left-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md border",
+                                                    CATEGORY_COLORS[video.category].bg, CATEGORY_COLORS[video.category].text, CATEGORY_COLORS[video.category].border)}>
+                                                    {CATEGORY_ICONS[video.category]}
+                                                    <span className="text-xs font-semibold">{CATEGORY_LABELS[video.category]}</span>
+                                                </div>
 
-                                    {/* Video Indicator */}
-                                    {post.isReel && (
-                                        <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full">
-                                            <Video className="h-3.5 w-3.5 text-white" />
-                                            <span className="text-white text-xs font-semibold">Reel</span>
-                                        </div>
-                                    )}
-
-                                    {/* Duration Badge */}
-                                    {post.duration && (
-                                        <div className="absolute top-4 right-4 bg-black/40 backdrop-blur-md px-2 py-1 rounded-lg">
-                                            <span className="text-white text-xs font-medium">{post.duration}</span>
-                                        </div>
-                                    )}
-
-                                    {/* Play Button for Videos */}
-                                    {post.isReel && (
-                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                            <motion.div
-                                                className="bg-white/20 backdrop-blur-md p-4 rounded-full border border-white/30"
-                                                whileHover={{ scale: 1.1 }}
-                                            >
-                                                <PlayCircle className="h-10 w-10 text-white" />
-                                            </motion.div>
-                                        </div>
-                                    )}
-
-                                    {/* Hover Stats */}
-                                    <div className="absolute bottom-0 left-0 right-0 p-6 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                                        <div className="flex items-center justify-between text-white">
-                                            <div className="flex items-center gap-4">
-                                                <span className="flex items-center gap-1.5">
-                                                    <Heart className="h-4 w-4" />
-                                                    <span className="text-sm font-medium">{(post.likes || 0).toLocaleString()}</span>
-                                                </span>
-                                                {post.views && (
-                                                    <span className="flex items-center gap-1.5">
-                                                        <Eye className="h-4 w-4" />
-                                                        <span className="text-sm font-medium">{post.views.toLocaleString()}</span>
-                                                    </span>
+                                                {video.duration && (
+                                                    <div className="absolute top-4 right-4 glass-dark px-2 py-1 rounded-lg">
+                                                        <span className="text-white text-xs font-medium">{video.duration}</span>
+                                                    </div>
                                                 )}
+
+                                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                                    <div className="glass p-4 rounded-full border border-white/20">
+                                                        <PlayCircle className="h-10 w-10 text-white" />
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <span className="text-xs text-white/70">{post.timestamp}</span>
-                                        </div>
-                                    </div>
-                                </div>
 
-                                {/* Content */}
-                                <div className="p-6">
-                                    <p className="text-gray-900 font-medium leading-relaxed line-clamp-2 mb-4">
-                                        {post.caption}
-                                    </p>
-
-                                    {/* Engagement */}
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <motion.button
-                                                whileHover={{ scale: 1.1 }}
-                                                whileTap={{ scale: 0.9 }}
-                                                className="flex items-center gap-1.5 text-gray-500 hover:text-red-500 transition-colors"
-                                            >
-                                                <Heart className="h-4 w-4" />
-                                                <span className="text-sm">{(post.likes || 0).toLocaleString()}</span>
-                                            </motion.button>
-                                            {post.comments && (
-                                                <motion.button
-                                                    whileHover={{ scale: 1.1 }}
-                                                    whileTap={{ scale: 0.9 }}
-                                                    className="flex items-center gap-1.5 text-gray-500 hover:text-primary-600 transition-colors"
-                                                >
-                                                    <MessageCircle className="h-4 w-4" />
-                                                    <span className="text-sm">{post.comments}</span>
-                                                </motion.button>
-                                            )}
-                                        </div>
-                                        <motion.a
-                                            href="#"
-                                            className="flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-primary-600 transition-colors"
-                                            whileHover={{ x: 4 }}
-                                        >
-                                            View <ArrowRight className="h-4 w-4" />
-                                        </motion.a>
-                                    </div>
-                                </div>
-                            </motion.article>
-                        ))}
+                                            <div className="p-5">
+                                                <h3 className="text-white font-bold leading-tight line-clamp-2 mb-2">{video.title}</h3>
+                                                {video.description && <p className="text-zinc-500 text-sm line-clamp-2 mb-4">{video.description}</p>}
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3 text-zinc-500">
+                                                        <span className="flex items-center gap-1 text-xs"><Eye className="h-3.5 w-3.5" />{(video.views || 0).toLocaleString()}</span>
+                                                        <span className="flex items-center gap-1 text-xs"><Heart className="h-3.5 w-3.5" />{(video.likes || 0).toLocaleString()}</span>
+                                                    </div>
+                                                    <span className="flex items-center gap-1 text-xs font-semibold text-karnataka-yellow group-hover:gap-2 transition-all">
+                                                        Watch <ArrowRight className="h-3.5 w-3.5" />
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </motion.article>
+                                    </Link>
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
                     </motion.div>
                 )}
 
-                {/* Load More */}
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    whileInView={{ opacity: 1 }}
-                    viewport={{ once: true }}
-                    className="flex justify-center mt-12"
-                >
-                    <motion.a
-                        href="https://instagram.com/builderballery"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group flex items-center gap-2 px-8 py-4 bg-white border-2 border-gray-200 rounded-2xl font-bold text-gray-900 hover:border-primary-500 hover:text-primary-600 hover:shadow-lg transition-all duration-300"
-                        whileHover={{ scale: 1.02, y: -2 }}
-                        whileTap={{ scale: 0.98 }}
-                    >
-                        <Instagram className="h-5 w-5" />
-                        View All on Instagram
+                <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="flex justify-center mt-12">
+                    <motion.a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer"
+                        className="group flex items-center gap-2 btn-glass px-8 py-4 rounded-2xl font-bold text-white"
+                        whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}>
+                        <Instagram className="h-5 w-5" /> View All on Instagram
                         <ExternalLink className="h-4 w-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                     </motion.a>
                 </motion.div>
@@ -849,251 +406,160 @@ const InstagramFeed = ({ posts, loading }: { posts: MediaItem[]; loading: boolea
     )
 }
 
-// 5. About Section
+// --- ABOUT ---
 const AboutSection = () => (
-    <section id="about" className="py-24 lg:py-32 bg-white relative overflow-hidden">
-        {/* Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary-50/30 via-transparent to-green-50/20" />
+    <section id="about" className="py-24 lg:py-32 relative overflow-hidden bg-zinc-900">
+        <div className="absolute inset-0 bg-dots-dark" />
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-karnataka-red/5 rounded-full blur-[150px]" />
+        <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-karnataka-yellow/5 rounded-full blur-[150px]" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
             <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center">
-                {/* Image */}
-                <motion.div
-                    initial={{ opacity: 0, x: -50 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    className="relative"
-                >
-                    {/* Decorative Elements */}
-                    <div className="absolute -top-8 -left-8 w-32 h-32 bg-primary-200/50 rounded-full blur-2xl" />
-                    <div className="absolute -bottom-8 -right-8 w-40 h-40 bg-primary-300/30 rounded-full blur-2xl" />
-
-                    {/* Main Image */}
-                    <div className="relative">
-                        <div className="absolute -inset-4 bg-gradient-to-r from-primary-500/20 to-green-500/20 rounded-[2.5rem] blur-xl" />
-                        <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-white">
-                            <Image
-                                src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=2070&auto=format&fit=crop"
-                                alt="Builder Ballery"
-                                width={600}
-                                height={800}
-                                className="object-cover"
-                            />
-
-                            {/* Overlay Badge */}
-                            <div className="absolute bottom-6 left-6 right-6 bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-lg">
-                                <div className="flex items-center gap-4">
-                                    <div className="bg-primary-100 p-3 rounded-xl">
-                                        <HardHat className="h-6 w-6 text-primary-600" />
-                                    </div>
-                                    <div>
-                                        <p className="font-bold text-gray-900">15+ Years Experience</p>
-                                        <p className="text-sm text-gray-500">Civil Engineering & Construction</p>
-                                    </div>
-                                </div>
+                <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="relative">
+                    <div className="absolute -inset-4 bg-gradient-to-r from-karnataka-red/10 to-karnataka-yellow/10 rounded-[2.5rem] blur-xl" />
+                    <div className="relative border-gradient rounded-3xl p-1">
+                        <div className="rounded-[1.4rem] overflow-hidden">
+                            <Image src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=2070&auto=format&fit=crop"
+                                alt="Builder Ballery" width={600} height={800} className="object-cover" />
+                        </div>
+                    </div>
+                    <div className="absolute bottom-6 left-6 right-6 glass rounded-2xl p-4">
+                        <div className="flex items-center gap-4">
+                            <div className="bg-gradient-to-br from-karnataka-red to-karnataka-yellow p-3 rounded-xl">
+                                <HardHat className="h-6 w-6 text-white" />
+                            </div>
+                            <div>
+                                <p className="font-bold text-white">15+ Years Experience</p>
+                                <p className="text-sm text-zinc-400">Civil Engineer • ಸಿವಿಲ್ ಇಂಜಿನಿಯರ್</p>
                             </div>
                         </div>
                     </div>
                 </motion.div>
 
-                {/* Content */}
-                <motion.div
-                    initial={{ opacity: 0, x: 50 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    className="space-y-8"
-                >
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-50 border border-primary-100">
-                        <Sparkles className="h-4 w-4 text-primary-600" />
-                        <span className="text-sm font-semibold text-primary-700">About Me</span>
+                <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="space-y-8">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border border-karnataka-yellow/20">
+                        <Sparkles className="h-4 w-4 text-karnataka-yellow" />
+                        <span className="text-sm font-semibold text-zinc-300">About Me • ನನ್ನ ಬಗ್ಗೆ</span>
                     </div>
 
-                    <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 leading-tight">
-                        Passionate Engineer &<br />
-                        <span className="bg-gradient-to-r from-primary-600 to-green-500 bg-clip-text text-transparent">Content Creator</span>
+                    <h2 className="text-4xl sm:text-5xl font-display font-bold text-white leading-tight">
+                        ನಿಷ್ಠಾವಂತ ಇಂಜಿನಿಯರ್ &<br />
+                        <span className="gradient-text-karnataka">ಕಂಟೆಂಟ್ ಕ್ರಿಯೇಟರ್</span>
+                        <br /><span className="text-xl text-zinc-500 font-normal">Passionate Engineer & Creator</span>
                     </h2>
 
-                    <p className="text-lg text-gray-600 leading-relaxed">
-                        I started my career on a construction site, but my passion for design and documentation led me to share my journey on Instagram.
-                        I believe that engineering is not just about calculations; it's about <span className="text-gray-900 font-medium">storytelling</span>.
+                    <p className="text-lg text-zinc-400 leading-relaxed">
+                        ನಾನು ನನ್ನ ವೃತ್ತಿಜೀವನವನ್ನು ನಿರ್ಮಾಣ ಸ್ಥಳದಲ್ಲಿ ಪ್ರಾರಂಭಿಸಿದೆ. ಎಂಜಿನಿಯರಿಂಗ್ ಕೇವಲ ಲೆಕ್ಕಾಚಾರಗಳಲ್ಲ; ಅದು <span className="text-white font-medium">ಕಥ ಹೇಳುವ ಕಲೆ</span>.
+                        <br /><span className="text-zinc-500">Engineering is not just calculations; it is storytelling.</span>
                     </p>
 
-                    {/* Feature Cards */}
                     <div className="grid sm:grid-cols-2 gap-4">
-                        <motion.div
-                            whileHover={{ y: -4, shadow: "lg" }}
-                            className="bg-gradient-to-br from-gray-50 to-white p-6 rounded-2xl border border-gray-100 hover:shadow-xl transition-all duration-300"
-                        >
-                            <div className="bg-primary-100 p-3 rounded-xl w-fit mb-4">
-                                <Layers className="h-6 w-6 text-primary-600" />
+                        <motion.div whileHover={{ y: -4 }} className="card-dark p-6 rounded-2xl">
+                            <div className="bg-gradient-to-br from-karnataka-red/20 to-karnataka-red/5 p-3 rounded-xl w-fit mb-4">
+                                <Layers className="h-6 w-6 text-karnataka-red" />
                             </div>
-                            <h3 className="font-bold text-gray-900 mb-2">Civil Engineering</h3>
-                            <p className="text-sm text-gray-500">Specializing in high-rise construction and structural design.</p>
+                            <h3 className="font-bold text-white mb-2">ಸಿವಿಲ್ ಎಂಜಿನಿಯರಿಂಗ್</h3>
+                            <p className="text-sm text-zinc-500">Structural design & earthquake-resistant buildings.</p>
                         </motion.div>
-
-                        <motion.div
-                            whileHover={{ y: -4, shadow: "lg" }}
-                            className="bg-gradient-to-br from-gray-50 to-white p-6 rounded-2xl border border-gray-100 hover:shadow-xl transition-all duration-300"
-                        >
-                            <div className="bg-primary-100 p-3 rounded-xl w-fit mb-4">
-                                <Video className="h-6 w-6 text-primary-600" />
+                        <motion.div whileHover={{ y: -4 }} className="card-dark p-6 rounded-2xl">
+                            <div className="bg-gradient-to-br from-karnataka-yellow/20 to-karnataka-yellow/5 p-3 rounded-xl w-fit mb-4">
+                                <FileText className="h-6 w-6 text-karnataka-yellow" />
                             </div>
-                            <h3 className="font-bold text-gray-900 mb-2">Content Creation</h3>
-                            <p className="text-sm text-gray-500">Creating immersive 3D renders and construction animations.</p>
+                            <h3 className="font-bold text-white mb-2">ಉಚಿತ ಸಂಪನ್ಮೂಲಗಳು</h3>
+                            <p className="text-sm text-zinc-500">Government circulars & construction guides.</p>
                         </motion.div>
                     </div>
 
-                    {/* Stats Row */}
                     <div className="flex flex-wrap gap-8 pt-4">
-                        <div>
-                            <p className="text-3xl font-bold text-gray-900">150+</p>
-                            <p className="text-sm text-gray-500">Projects Completed</p>
-                        </div>
-                        <div>
-                            <p className="text-3xl font-bold text-gray-900">50K+</p>
-                            <p className="text-sm text-gray-500">Instagram Followers</p>
-                        </div>
-                        <div>
-                            <p className="text-3xl font-bold text-gray-900">15</p>
-                            <p className="text-sm text-gray-500">Industry Awards</p>
-                        </div>
+                        {[{ v: '150+', l: 'Projects' }, { v: '226K+', l: 'Followers' }, { v: '15+', l: 'Years' }].map(s => (
+                            <div key={s.l}>
+                                <p className="text-3xl font-display font-bold gradient-text-karnataka">{s.v}</p>
+                                <p className="text-sm text-zinc-500">{s.l}</p>
+                            </div>
+                        ))}
                     </div>
-
-                    {/* CTA */}
-                    <motion.a
-                        href="#"
-                        className="inline-flex items-center gap-2 text-primary-600 font-bold text-lg group"
-                        whileHover={{ x: 4 }}
-                    >
-                        View My Resume
-                        <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                    </motion.a>
                 </motion.div>
             </div>
         </div>
     </section>
 )
 
-// 6. CTA Section
+// --- CTA ---
 const CTA = () => (
-    <section id="contact" className="relative py-24 lg:py-32 overflow-hidden">
-        {/* Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800" />
-        <div className="absolute inset-0 bg-grid opacity-10" />
-
-        {/* Decorative Elements */}
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-green-500/10 rounded-full blur-3xl" />
+    <section id="contact" className="relative py-24 lg:py-32 overflow-hidden bg-zinc-950">
+        <div className="absolute inset-0 bg-grid-dark" />
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-karnataka-red/8 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-karnataka-yellow/6 rounded-full blur-[120px]" />
 
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative text-center">
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 mb-8"
-            >
-                <Sparkles className="h-4 w-4 text-primary-400" />
-                <span className="text-sm font-semibold text-white/90">Let's Connect</span>
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border border-karnataka-yellow/20 mb-8">
+                <Zap className="h-4 w-4 text-karnataka-yellow" />
+                <span className="text-sm font-semibold text-zinc-300">Let&apos;s Connect • ಸಂಪರ್ಕದಲ್ಲಿರಿ</span>
             </motion.div>
 
-            <motion.h2
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.1 }}
-                className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight"
-            >
-                Let's Build Something
-                <br />
-                <span className="bg-gradient-to-r from-primary-400 to-green-400 bg-clip-text text-transparent">Great Together</span>
+            <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+                transition={{ delay: 0.1 }} className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold text-white mb-6 leading-tight">
+                ಒಟ್ಟಿಗೆ ಏನನ್ನಾದರೂ
+                <br /><span className="gradient-text-karnataka">ಶ್ರೇಷ್ಠವಾಗಿ ನಿರ್ಮಿಸೋಣ</span>
+                <br /><span className="text-xl text-zinc-500 font-normal">Let&apos;s Build Something Great Together</span>
             </motion.h2>
 
-            <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.2 }}
-                className="text-lg sm:text-xl text-gray-400 mb-12 max-w-2xl mx-auto"
-            >
-                Whether you have a project in mind or just want to say hello, I'm always open to new opportunities and collaborations.
+            <motion.p initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+                transition={{ delay: 0.2 }} className="text-lg text-zinc-500 mb-12 max-w-2xl mx-auto">
+                Whether you have a project in mind or just want to say hello, I&apos;m always ready.
             </motion.p>
 
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.3 }}
-                className="flex flex-col sm:flex-row gap-4 justify-center"
-            >
-                <motion.a
-                    href="mailto:contact@builderballery.com"
-                    className="group relative overflow-hidden bg-white text-gray-900 px-8 py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 hover:shadow-2xl hover:shadow-white/20 transition-all duration-300"
-                    whileHover={{ scale: 1.02, y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                >
-                    <span className="relative z-10 flex items-center gap-2">
-                        Get in Touch
-                        <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                    </span>
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+                transition={{ delay: 0.3 }} className="flex flex-col sm:flex-row gap-4 justify-center">
+                <motion.a href="mailto:contact@builderballery.com"
+                    className="btn-karnataka px-8 py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2"
+                    whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}>
+                    <Mail className="h-5 w-5" /> Get in Touch
                 </motion.a>
-
-                <motion.a
-                    href="https://instagram.com/builderballery"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group bg-white/10 backdrop-blur-sm text-white px-8 py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 border border-white/20 hover:bg-white/20 transition-all duration-300"
-                    whileHover={{ scale: 1.02, y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                >
-                    <Instagram className="h-5 w-5" />
-                    Follow on Instagram
+                <motion.a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer"
+                    className="btn-glass px-8 py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2"
+                    whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}>
+                    <Instagram className="h-5 w-5" /> Follow on Instagram
                 </motion.a>
             </motion.div>
         </div>
     </section>
 )
 
-// 7. Footer
+// --- FOOTER ---
 const Footer = () => (
-    <footer className="bg-gray-950 text-gray-400 py-16 relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 bg-grid opacity-5" />
+    <footer className="bg-zinc-950 text-zinc-400 relative overflow-hidden">
+        <div className="h-[2px] karnataka-stripe" />
+        <div className="absolute inset-0 bg-grid-dark opacity-30" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative py-16">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
-                {/* Brand */}
                 <div className="lg:col-span-1">
-                    <motion.a
-                        href="#"
-                        className="flex items-center gap-3 mb-6 group"
-                        whileHover={{ scale: 1.02 }}
-                    >
+                    <motion.a href="#" className="flex items-center gap-3 mb-6 group" whileHover={{ scale: 1.02 }}>
                         <div className="relative">
-                            <div className="absolute inset-0 bg-gradient-to-br from-primary-400 to-primary-600 rounded-xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity" />
-                            <div className="relative bg-gradient-to-br from-primary-500 to-primary-700 p-2.5 rounded-xl">
+                            <div className="absolute inset-0 bg-gradient-to-br from-karnataka-red to-karnataka-yellow rounded-xl blur-lg opacity-40" />
+                            <div className="relative bg-gradient-to-br from-karnataka-red to-karnataka-yellow p-2.5 rounded-xl">
                                 <Building2 className="h-6 w-6 text-white" />
                             </div>
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-xl font-bold text-white tracking-tight">
-                                Builder <span className="bg-gradient-to-r from-primary-400 to-green-400 bg-clip-text text-transparent">Ballery</span>
+                            <span className="text-xl font-display font-bold text-white tracking-tight">
+                                Builder <span className="gradient-text-karnataka">Ballery</span>
                             </span>
-                            <span className="text-xs text-gray-500 font-medium -mt-0.5">Civil Engineering</span>
+                            <span className="text-[10px] text-zinc-600 font-medium tracking-wider uppercase">ಬಳ್ಳೇರಿ • Since 2009</span>
                         </div>
                     </motion.a>
-                    <p className="text-sm text-gray-500 leading-relaxed">
-                        Making construction look easy, one post at a time. Follow my journey through the world of civil engineering.
-                    </p>
+                    <p className="text-sm text-zinc-600 leading-relaxed">Making construction easy, one reel at a time.</p>
                 </div>
 
-                {/* Quick Links */}
                 <div>
-                    <h4 className="text-white font-bold mb-6">Quick Links</h4>
+                    <h4 className="text-white font-display font-bold mb-6 text-sm tracking-wider uppercase">Quick Links</h4>
                     <ul className="space-y-3">
-                        {['Home', 'Work', 'About', 'Contact'].map((link) => (
+                        {['Home', 'Videos', 'About', 'Contact'].map((link) => (
                             <li key={link}>
-                                <a href={`#${link.toLowerCase()}`} className="text-sm hover:text-white transition-colors flex items-center gap-2 group">
-                                    <ChevronRight className="h-3 w-3 opacity-0 -ml-5 group-hover:opacity-100 group-hover:ml-0 transition-all" />
+                                <a href={`#${link.toLowerCase()}`} className="text-sm text-zinc-500 hover:text-white transition-colors flex items-center gap-2 group">
+                                    <ChevronRight className="h-3 w-3 opacity-0 -ml-5 group-hover:opacity-100 group-hover:ml-0 transition-all text-karnataka-yellow" />
                                     {link}
                                 </a>
                             </li>
@@ -1101,96 +567,74 @@ const Footer = () => (
                     </ul>
                 </div>
 
-                {/* Services */}
                 <div>
-                    <h4 className="text-white font-bold mb-6">Services</h4>
+                    <h4 className="text-white font-display font-bold mb-6 text-sm tracking-wider uppercase">Categories</h4>
                     <ul className="space-y-3">
-                        {['Consulting', '3D Modeling', 'Brand Collaborations', 'Speaking'].map((service) => (
-                            <li key={service}>
-                                <a href="#" className="text-sm hover:text-white transition-colors flex items-center gap-2 group">
-                                    <ChevronRight className="h-3 w-3 opacity-0 -ml-5 group-hover:opacity-100 group-hover:ml-0 transition-all" />
-                                    {service}
+                        {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                            <li key={key}>
+                                <a href="#videos" className="text-sm text-zinc-500 hover:text-white transition-colors flex items-center gap-2 group">
+                                    <ChevronRight className="h-3 w-3 opacity-0 -ml-5 group-hover:opacity-100 group-hover:ml-0 transition-all text-karnataka-yellow" />
+                                    {label}
                                 </a>
                             </li>
                         ))}
                     </ul>
                 </div>
 
-                {/* Social */}
                 <div>
-                    <h4 className="text-white font-bold mb-6">Follow Me</h4>
+                    <h4 className="text-white font-display font-bold mb-6 text-sm tracking-wider uppercase">Follow Me</h4>
                     <div className="flex gap-3">
-                        <motion.a
-                            href="https://instagram.com/builderballery"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group"
-                            whileHover={{ scale: 1.1, y: -2 }}
-                        >
-                            <Instagram className="h-5 w-5 group-hover:text-primary-400 transition-colors" />
-                        </motion.a>
-                        <motion.a
-                            href="#"
-                            className="p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group"
-                            whileHover={{ scale: 1.1, y: -2 }}
-                        >
-                            <Video className="h-5 w-5 group-hover:text-primary-400 transition-colors" />
-                        </motion.a>
-                        <motion.a
-                            href="#"
-                            className="p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group"
-                            whileHover={{ scale: 1.1, y: -2 }}
-                        >
-                            <Share2 className="h-5 w-5 group-hover:text-primary-400 transition-colors" />
-                        </motion.a>
+                        {[{ icon: Instagram, href: INSTAGRAM_URL }, { icon: Video, href: '#' }, { icon: Share2, href: '#' }].map(({ icon: Icon, href }, i) => (
+                            <motion.a key={i} href={href} target={href.startsWith('http') ? '_blank' : undefined}
+                                rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                                className="p-3 card-dark rounded-xl group" whileHover={{ scale: 1.1, y: -2 }}>
+                                <Icon className="h-5 w-5 group-hover:text-karnataka-yellow transition-colors" />
+                            </motion.a>
+                        ))}
                     </div>
-
-                    {/* Location */}
-                    <div className="mt-6 flex items-center gap-2 text-sm text-gray-500">
-                        <MapPin className="h-4 w-4" />
-                        <span>Mumbai, India</span>
+                    <div className="mt-6 flex items-center gap-2 text-sm text-zinc-600">
+                        <MapPin className="h-4 w-4 text-karnataka-red" />
+                        <span>Bengaluru, Karnataka • ಕರ್ನಾಟಕ</span>
                     </div>
                 </div>
             </div>
 
-            {/* Bottom Bar */}
-            <div className="border-t border-gray-800 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
-                <p className="text-sm text-gray-500">
-                    © 2024 Builder Ballery. All rights reserved.
-                </p>
-                <p className="text-sm text-gray-500 flex items-center gap-2">
-                    Crafted with <Heart className="h-4 w-4 text-red-500" /> for engineering enthusiasts
+            <div className="border-t border-white/5 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <p className="text-sm text-zinc-600">© 2024 Builder Ballery. All rights reserved.</p>
+                <p className="text-sm text-zinc-600 flex items-center gap-2">
+                    Crafted with <Heart className="h-4 w-4 text-karnataka-red" /> for engineering enthusiasts
                 </p>
             </div>
         </div>
     </footer>
 )
 
-// --- Main Application ---
-export default function Home() {
-    const [posts, setPosts] = useState<MediaItem[]>([])
+// --- MAIN ---
+export default function HomePage() {
+    const [videos, setVideos] = useState<VideoType[]>([])
     const [loading, setLoading] = useState(true)
 
-    // Simulate data fetching from Apify
     useEffect(() => {
-        const fetchData = async () => {
-            // In a real app, call Apify MCP server to scrape Instagram content
-            // For now, use mock data with delay
-            setTimeout(() => {
-                setPosts(INITIAL_INSTAGRAM_DATA)
+        const fetchVideos = async () => {
+            try {
+                const { data, error } = await supabase.from('videos').select('*').order('created_at', { ascending: false })
+                if (error) throw error
+                setVideos(data || [])
+            } catch (err) {
+                console.error('Error fetching videos:', err)
+            } finally {
                 setLoading(false)
-            }, 1500)
+            }
         }
-
-        fetchData()
+        fetchVideos()
     }, [])
 
     return (
-        <main className="min-h-screen bg-white text-gray-900 overflow-x-hidden">
+        <main className="min-h-screen bg-zinc-950 text-white overflow-x-hidden">
             <Navbar />
             <Hero />
             <StatsSection />
-            <InstagramFeed posts={posts} loading={loading} />
+            <VideoLibrary videos={videos} loading={loading} />
             <AboutSection />
             <CTA />
             <Footer />
