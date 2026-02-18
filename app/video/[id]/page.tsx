@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import {
     ArrowLeft,
@@ -65,6 +65,38 @@ function getFileTypeColor(fileType: string) {
     if (type === 'doc' || type === 'docx') return 'bg-blue-50 text-blue-600 border-blue-200'
     if (type === 'xls' || type === 'xlsx') return 'bg-green-50 text-green-600 border-green-200'
     return 'bg-gray-50 text-gray-600 border-gray-200'
+}
+
+// --- INSTAGRAM EMBED ---
+const InstagramEmbed = ({ url }: { url: string }) => {
+    const containerRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        // Load Instagram embed script
+        const existing = document.querySelector('script[src*="instagram.com/embed.js"]')
+        if (existing) {
+            // Re-process embeds if script already loaded
+            (window as any).instgrm?.Embeds?.process()
+            return
+        }
+        const script = document.createElement('script')
+        script.src = '//www.instagram.com/embed.js'
+        script.async = true
+        script.onload = () => {
+            (window as any).instgrm?.Embeds?.process()
+        }
+        document.body.appendChild(script)
+    }, [url])
+
+    const embedHtml = `<blockquote class="instagram-media" data-instgrm-captioned data-instgrm-permalink="${url}?utm_source=ig_embed" data-instgrm-version="14" style="background:#FFF; border:0; border-radius:12px; margin:0; padding:0; width:100%; max-width:540px; min-width:326px;"><div style="padding:16px;"><a href="${url}" target="_blank" style="color:#000; text-decoration:none;">View this post on Instagram</a></div></blockquote>`
+
+    return (
+        <div
+            ref={containerRef}
+            className="w-full max-w-[540px] overflow-hidden rounded-2xl mx-auto"
+            dangerouslySetInnerHTML={{ __html: embedHtml }}
+        />
+    )
 }
 
 export default function VideoDetailPage({ params }: { params: { id: string } }) {
@@ -211,15 +243,21 @@ export default function VideoDetailPage({ params }: { params: { id: string } }) 
                     animate={{ opacity: 1, y: 0 }}
                     className="mb-8"
                 >
-                    <div className="relative aspect-video rounded-3xl overflow-hidden bg-gray-900 shadow-2xl border border-gray-200">
-                        <iframe
-                            src={getYouTubeEmbedUrl(video.youtube_url)}
-                            title={video.title}
-                            className="absolute inset-0 w-full h-full"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                        />
-                    </div>
+                    {video.youtube_url.includes('instagram.com') ? (
+                        <div className="flex justify-center bg-zinc-900 rounded-3xl p-4 sm:p-8">
+                            <InstagramEmbed url={video.youtube_url} />
+                        </div>
+                    ) : (
+                        <div className="relative aspect-video rounded-3xl overflow-hidden bg-gray-900 shadow-2xl border border-gray-200">
+                            <iframe
+                                src={getYouTubeEmbedUrl(video.youtube_url)}
+                                title={video.title}
+                                className="absolute inset-0 w-full h-full"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                            />
+                        </div>
+                    )}
                 </motion.div>
 
                 {/* Video Info */}
