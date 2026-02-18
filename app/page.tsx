@@ -64,9 +64,9 @@ const Navbar = () => {
                 <div className="flex items-center justify-between h-20">
                     <motion.a href="#" className="flex items-center gap-3 group" whileHover={{ scale: 1.02 }}>
                         <div className="relative">
-                            <div className="absolute inset-0 bg-gradient-to-br from-karnataka-red to-karnataka-yellow rounded-xl blur-lg opacity-40 group-hover:opacity-70 transition-opacity" />
-                            <div className="relative bg-gradient-to-br from-karnataka-red to-karnataka-yellow p-2.5 rounded-xl">
-                                <Building2 className="h-6 w-6 text-white" />
+                            <div className="absolute -inset-0.5 bg-gradient-to-br from-karnataka-red to-karnataka-yellow rounded-full blur-sm opacity-50 group-hover:opacity-80 transition-opacity" />
+                            <div className="relative w-11 h-11 rounded-full overflow-hidden border-2 border-karnataka-red/50">
+                                <Image src="/logo.jpg" alt="Builder Ballery" fill className="object-cover" />
                             </div>
                         </div>
                         <div className="flex flex-col">
@@ -538,9 +538,9 @@ const Footer = () => (
                 <div className="lg:col-span-1">
                     <motion.a href="#" className="flex items-center gap-3 mb-6 group" whileHover={{ scale: 1.02 }}>
                         <div className="relative">
-                            <div className="absolute inset-0 bg-gradient-to-br from-karnataka-red to-karnataka-yellow rounded-xl blur-lg opacity-40" />
-                            <div className="relative bg-gradient-to-br from-karnataka-red to-karnataka-yellow p-2.5 rounded-xl">
-                                <Building2 className="h-6 w-6 text-white" />
+                            <div className="absolute -inset-0.5 bg-gradient-to-br from-karnataka-red to-karnataka-yellow rounded-full blur-sm opacity-40" />
+                            <div className="relative w-11 h-11 rounded-full overflow-hidden border-2 border-karnataka-red/50">
+                                <Image src="/logo.jpg" alt="Builder Ballery" fill className="object-cover" />
                             </div>
                         </div>
                         <div className="flex flex-col">
